@@ -1,0 +1,116 @@
+name: app
+services:
+  adminer:
+    image: adminer
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        target: 8080
+        published: "8080"
+        protocol: tcp
+    restart: always
+  database:
+    environment:
+      APP_ENV: dev
+      APP_SECRET: 643744021c6e0e45db5db635d168f5ec
+      DATABASE_URL: postgresql://app:root@database/app?serverVersion=16&charset=utf8
+      POSTGRES_DB: app
+      POSTGRES_PASSWORD: '!ChangeMe1!'
+      POSTGRES_USER: app
+      TEST_VAR: TEST_VAR
+    healthcheck:
+      test:
+        - CMD
+        - pg_isready
+        - -d
+        - app
+        - -U
+        - app
+      timeout: 5s
+      retries: 5
+      start_period: 1m0s
+    image: postgres:16-alpine
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        target: 5432
+        protocol: tcp
+    volumes:
+      - type: volume
+        source: database_data
+        target: /var/lib/postgresql/data
+        volume: {}
+  php:
+    build:
+      context: /home/nurbek/php/app
+      dockerfile: Dockerfile
+      target: frankenphp_dev
+    environment:
+      DATABASE_URL: postgresql://app:!ChangeMe!@database:5432/app?serverVersion=15&charset=utf8
+      MERCURE_EXTRA_DIRECTIVES: demo
+      MERCURE_JWT_SECRET: '!ChangeThisMercureHubJWTSecretKey!'
+      MERCURE_PUBLIC_URL: https://localhost/.well-known/mercure
+      MERCURE_PUBLISHER_JWT_KEY: '!ChangeThisMercureHubJWTSecretKey!'
+      MERCURE_SUBSCRIBER_JWT_KEY: '!ChangeThisMercureHubJWTSecretKey!'
+      MERCURE_URL: http://php/.well-known/mercure
+      SERVER_NAME: localhost, php:80
+      STABILITY: stable
+      SYMFONY_VERSION: ""
+      TRUSTED_HOSTS: ^example\.com|localhost|php$$
+      TRUSTED_PROXIES: 127.0.0.0/8,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
+      XDEBUG_MODE: "off"
+    extra_hosts:
+      - host.docker.internal=host-gateway
+    image: app-php
+    networks:
+      default: null
+    ports:
+      - target: 80
+        published: "80"
+        protocol: tcp
+      - target: 443
+        published: "443"
+        protocol: tcp
+      - target: 443
+        published: "443"
+        protocol: udp
+    restart: unless-stopped
+    tty: true
+    volumes:
+      - type: volume
+        source: caddy_data
+        target: /data
+        volume: {}
+      - type: volume
+        source: caddy_config
+        target: /config
+        volume: {}
+      - type: bind
+        source: /home/nurbek/php/app
+        target: /app
+        bind:
+          create_host_path: true
+      - type: bind
+        source: /home/nurbek/php/app/frankenphp/Caddyfile
+        target: /etc/caddy/Caddyfile
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: bind
+        source: /home/nurbek/php/app/frankenphp/conf.d/app.dev.ini
+        target: /usr/local/etc/php/conf.d/app.dev.ini
+        read_only: true
+        bind:
+          create_host_path: true
+networks:
+  default:
+    name: app_default
+volumes:
+  caddy_config:
+    name: app_caddy_config
+  caddy_data:
+    name: app_caddy_data
+  database_data:
+    name: app_database_data

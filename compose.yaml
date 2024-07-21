@@ -41,8 +41,12 @@ services:
 ###> doctrine/doctrine-bundle ###
   database:
     image: postgres:${POSTGRES_VERSION:-16}-alpine
+    env_file:
+      - path: ./.env.local
+        required: true
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-app}
+      TEST_VAR: ${TEST_VAR:-TEST_VAR}
       # You should definitely change the password in production
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-!ChangeMe!}
       POSTGRES_USER: ${POSTGRES_USER:-app}
